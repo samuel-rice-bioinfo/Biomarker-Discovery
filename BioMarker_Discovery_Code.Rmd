@@ -1,0 +1,102 @@
+---
+title: "Biomarker Discovery"
+output: html_document
+date: "2025-02-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction
+
+This report aims to do some exploration on RNAseq data generated on Mesenchymal Stem Cells isolated from young and old donors that were differentiated to Osteoblasts and Tenocytes. The study aimed to assess how chronological ageing effects transcriptional events in engineered musculoskeletal tissues. 
+
+These samples were acquired in a team with two lab technicians that worked together to process them: Dave and Simon. Simon has been working in the lab for over 10 years and have the RNA extraction technique very well perfected. Dave joined the lab just 6 months ago but is a quick study. 
+
+The raw reads of this study were mapped to the human genome and a count file was generated. For the purpose of this case study, we will assume the data has already been put through necessary pre-processing and normalisation steps, the bioinformatics team doing these steps recommends scaling the data for multivariate analysis. The dataset has also been filtered to only contain a subset of genes to ease calculations. 
+
+You have two files for this analysis, the RNAseq data (LIFE752_Assessment1_data1F) and the metadata that has the sample information (LIFE752_Assessment1_metadata1F). 
+
+
+
+## Load needed packages
+```{r}
+
+require(ggplot2)
+
+```
+
+
+## Input the expression data and the metadata
+
+```{r}
+data<-read.csv("LIFE752_Assessment1_data1F-1.csv",row.names = 1) 
+metadata<-read.csv("LIFE752_Assessment1_metadata1F-1.csv")
+ 
+#let's do some checks on the files
+dim(data)
+head(data)
+dim(metadata)
+head(metadata)
+
+
+```
+
+
+## Undertake Principal Component Analysis
+
+```{r}
+
+pca_data<-prcomp(t(data), center=T,scale=T) # ADDED 't(data)' this transposes the matrix, flipping the headers and columns to make sure RNA-seq matrix works with PCA
+
+```
+
+
+## Prepare dataframes and information to plot
+Include the percentage of variance each component accounts for
+```{r}
+
+#create scores dataframe for first two principal components
+data_pca_scores<-as.data.frame(pca_data$x[,c(1,2)]) # CHANGED 'rotation' TO 'x' as this contains the principal component scores for each sample
+#extract the information of the % variance accounted for
+data_pca_importance<-summary(pca_data)$importance[2,c(1,2)]*100
+
+
+```
+
+## Generate plots
+
+It is important to check both if we can see a biological effect and technical effect (batch)
+
+```{r,tidy=T}
+#PCA score plot coloured by cell type
+ggplot(data = data_pca_scores)+
+  geom_point(size=3,aes(x=PC1, y=PC2,col=metadata$Type))+
+  scale_color_manual(values=c("blue","yellow4"),name="cell type")+
+  xlab(paste("PC1 -",round(data_pca_importance[1],2),"%" ))+
+  ylab(paste("PC2 -",round(data_pca_importance[2],2),"%" ))+ #ADDED '[2]' TO SPECIFY PRINCIPLE COMPONENT AND round(,2) ROUNDS THE PC% TO 2 DECIMAL PLACES
+  theme_bw(base_size = 16)+
+  theme(legend.position = "bottom")
+```
+```{r,tidy=T}
+#PCA score plot coloured by lab technician
+ggplot(data = data_pca_scores)+
+  geom_point(size=3,aes(x=PC1, y=PC2,col=metadata$Lab_tech))+
+  scale_color_manual(values=c("purple","orange"),name='Lab technician')+# LINE CORRECTED BY ADDING 'Lab technician' TO LABEL THE LEGEND
+  xlab(paste("PC1 -",round(data_pca_importance[1],2),"%" ))+
+  ylab(paste("PC2 -",round(data_pca_importance[2],2),"%" ))+
+  theme_bw(base_size = 16)+
+  theme(legend.position = "bottom")
+```
+
+## Interpretation of results
+
+# Q2
+# part A
+### There was clear distinction of points associated with different lab technicians (Dave and Simon) along the principal component 2 (23.08%), but this accounted for less variance than principal component 1 (53.74%). This suggests some batch effect-associated to PC2.
+
+# part B
+### Distinct clustering by cell type was observed in the PCA plot, with the greatest separation along PC1 (53.74%) suggesting this captures the most variance in transcriptional differences between osteoblasts and tenocytes. Furthermore, there was some intergroup variation across PC2 (23.08%).  
+
